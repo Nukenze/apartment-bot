@@ -1,75 +1,59 @@
-from flask import Flask
-import threading
-
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.common.by import By
-import time
 import requests
+import time
+import threading
+from flask import Flask
 
-# ----------- WEB SERVER -----------
+# ===== НАСТРОЙКИ =====
+TOKEN = "8773988746:AAHyYE2b18iC_DN0WuCaurl52V0BGjpayBc"
+CHAT_ID = "494628479"
+URL = "https://jadeevt.com/floorplans/"
+
+CHECK_INTERVAL = 600  # 10 минут
+
 app = Flask(__name__)
 
+# ===== TELEGRAM =====
+def send_message(text):
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, data={"chat_id": CHAT_ID, "text": text})
+
+# ===== ПАРСИНГ =====
+def check_site():
+    print("BOT STARTED")
+
+    seen = set()
+
+    while True:
+        try:
+            print("Checking site...")
+
+            res = requests.get(URL, timeout=15)
+            html = res.text.lower()
+
+            if "1 bed" in html or "1 bedroom" in html:
+                if "1bed" not in seen:
+                    send_message("🔥 Появилась 1 bedroom квартира!\n" + URL)
+                    seen.add("1bed")
+                    print("FOUND 1 BEDROOM")
+
+            else:
+                print("No 1 bedroom yet")
+
+        except Exception as e:
+            print("ERROR:", e)
+
+        time.sleep(CHECK_INTERVAL)
+
+# ===== ФОН =====
+def start_bot():
+    check_site()
+
+# ===== KEEP ALIVE =====
 @app.route("/")
 def home():
     return "Bot is running"
 
-def run_web():
+# ===== ЗАПУСК =====
+if __name__ == "__main__":
+    threading.Thread(target=start_bot).start()
     app.run(host="0.0.0.0", port=10000)
-
-
-# ----------- BOT -----------
-URL = "https://jadeevt.com/floorplans/"
-
-TOKEN = "8773988746:AAHyYE2b18iC_DN0WuCaurl52V0BGjpayBc"
-CHAT_ID = "494628479"
-
-seen = set()
-
-def send_telegram(text):
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, data={"chat_id": CHAT_ID, "text": text})
-
-
-def run_bot():
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
-
-    driver = webdriver.Chrome(options=options)
-    print("BOT STARTED")
-    while True:
-        try:
-            driver.get(URL)
-            time.sleep(5)
-
-            cards = driver.find_elements(By.XPATH, "//div[contains(@class,'floorplan')]")
-
-            current = set()
-
-            for card in cards:
-                text = card.text.lower()
-
-                if "1 bed" in text or "1 bedroom" in text:
-                    if "available" in text:
-                        info = card.text.strip()
-                        current.add(info)
-
-                        if info not in seen:
-                            send_telegram(f"🔥 Новая 1BR квартира:\n\n{info}")
-
-            seen.clear()
-            seen.update(current)
-
-            print("checking 1BR...")
-
-        except Exception as e:
-            print("error:", e)
-
-        time.sleep(60)
-
-
-# ----------- RUN BOTH -----------
-threading.Thread(target=run_web).start()
-threading.Thread(target=run_bot).start()
