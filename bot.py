@@ -1,9 +1,26 @@
+from flask import Flask
+import threading
+
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 import time
 import requests
 
+# ----------- WEB SERVER (чтобы Render не засыпал сразу) -----------
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Bot is running"
+
+def run_web():
+    app.run(host="0.0.0.0", port=10000)
+
+threading.Thread(target=run_web).start()
+
+
+# ----------- BOT SETTINGS -----------
 URL = "https://jadeevt.com/floorplans/"
 
 TOKEN = "8773988746:AAHyYE2b18iC_DN0WuCaurl52V0BGjpayBc"
@@ -15,6 +32,8 @@ def send_telegram(text):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, data={"chat_id": CHAT_ID, "text": text})
 
+
+# ----------- SELENIUM SETUP -----------
 options = Options()
 options.add_argument("--headless")
 options.add_argument("--no-sandbox")
@@ -22,6 +41,8 @@ options.add_argument("--disable-dev-shm-usage")
 
 driver = webdriver.Chrome(options=options)
 
+
+# ----------- MAIN LOOP -----------
 while True:
     try:
         driver.get(URL)
