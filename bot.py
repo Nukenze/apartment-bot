@@ -38,7 +38,7 @@ def run_bot():
     options.add_argument("--disable-dev-shm-usage")
 
     driver = webdriver.Chrome(options=options)
-
+    print("BOT STARTED")
     while True:
         try:
             driver.get(URL)
