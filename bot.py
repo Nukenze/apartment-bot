@@ -2,25 +2,25 @@ import requests
 import time
 import threading
 from flask import Flask
+from bs4 import BeautifulSoup
 
+# ===== НАСТРОЙКИ =====
 TOKEN = "8773988746:AAHyYE2b18iC_DN0WuCaurl52V0BGjpayBc"
 CHAT_ID = "494628479"
 URL = "https://jadeevt.com/floorplans/"
 
+CHECK_INTERVAL = 600  # 10 минут
+
 app = Flask(__name__)
 
+# ===== TELEGRAM =====
 def send_message(text):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, data={"chat_id": CHAT_ID, "text": text})
 
-@app.route("/")
-def home():
-    return "Bot is alive"
-
-# ===== ГЛАВНАЯ ЛОГИКА =====
-def run_bot():
+# ===== ПАРСИНГ =====
+def check_site():
     print("🔥 BOT STARTED")
-    send_message("TEST MESSAGE")
 
     seen = False
 
@@ -29,26 +29,38 @@ def run_bot():
             print("Checking site...")
 
             res = requests.get(URL, timeout=15)
-            html = res.text.lower()
+            soup = BeautifulSoup(res.text, "html.parser")
 
-            if "1 bed" in html or "1 bedroom" in html:
+            found = False
+
+            # ищем любые блоки с текстом
+            for unit in soup.find_all("div"):
+                text = unit.get_text().lower()
+
+                if "1 bed" in text or "1 bedroom" in text:
+                    found = True
+                    break
+
+            if found:
+                print("FOUND 1 BEDROOM")
+
                 if not seen:
-                    send_message("🔥 1 bedroom найден!\n" + URL)
+                    send_message("🔥 Появилась 1 bedroom квартира!\n" + URL)
                     seen = True
-                    print("FOUND 1 BEDROOM")
-
             else:
                 print("Nothing yet")
 
         except Exception as e:
             print("ERROR:", e)
 
-        time.sleep(60)  # пока 1 минута для теста
+        time.sleep(CHECK_INTERVAL)
+
+# ===== KEEP ALIVE =====
+@app.route("/")
+def home():
+    return "Bot is running"
 
 # ===== ЗАПУСК =====
 if __name__ == "__main__":
-    # Flask отдельно
-    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=10000)).start()
-
-    # Бот напрямую (НЕ в фоне)
-    run_bot()
+    threading.Thread(target=check_site).start()
+    app.run(host="0.0.0.0", port=10000)
