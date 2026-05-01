@@ -13,8 +13,13 @@ def send_message(text):
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, data={"chat_id": CHAT_ID, "text": text})
 
-def check_site():
-    print("BOT STARTED")
+@app.route("/")
+def home():
+    return "Bot is alive"
+
+# ===== ГЛАВНАЯ ЛОГИКА =====
+def run_bot():
+    print("🔥 BOT STARTED")
 
     seen = False
 
@@ -27,9 +32,9 @@ def check_site():
 
             if "1 bed" in html or "1 bedroom" in html:
                 if not seen:
-                    send_message("🔥 Есть 1 bedroom!\n" + URL)
+                    send_message("🔥 1 bedroom найден!\n" + URL)
                     seen = True
-                    print("FOUND")
+                    print("FOUND 1 BEDROOM")
 
             else:
                 print("Nothing yet")
@@ -37,15 +42,12 @@ def check_site():
         except Exception as e:
             print("ERROR:", e)
 
-        time.sleep(600)
+        time.sleep(60)  # пока 1 минута для теста
 
-@app.route("/")
-def home():
-    return "Bot is running"
-
-def run_bot():
-    check_site()
-
+# ===== ЗАПУСК =====
 if __name__ == "__main__":
-    threading.Thread(target=run_bot).start()
-    app.run(host="0.0.0.0", port=10000)
+    # Flask отдельно
+    threading.Thread(target=lambda: app.run(host="0.0.0.0", port=10000)).start()
+
+    # Бот напрямую (НЕ в фоне)
+    run_bot()
