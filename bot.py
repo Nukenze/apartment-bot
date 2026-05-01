@@ -20,6 +20,7 @@ def home():
 # ===== ГЛАВНАЯ ЛОГИКА =====
 def run_bot():
     print("🔥 BOT STARTED")
+    send_message("TEST MESSAGE")
 
     seen = False
 
